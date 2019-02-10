@@ -28,15 +28,14 @@ func init() {
 
 // LotteryProtocol holds the state of a given protocol.
 //
-// For this example, it defines a channel that will receive the number
-// of children. Only the root-node will write to the channel.
+// 
 type LotteryProtocol struct {
 	*onet.TreeNodeInstance
 	LotteryResult chan int
 	NodeID        string
 }
 
-// Check that *TemplateProtocol implements onet.ProtocolInstance
+// Check that *LotteryProtocol implements onet.ProtocolInstance
 var _ onet.ProtocolInstance = (*LotteryProtocol)(nil)
 
 // NewProtocol initialises the structure for use in one round
@@ -74,8 +73,8 @@ func (p *LotteryProtocol) HandleAnnounce(msg StructAnnounce) error {
 	return nil
 }
 
-// HandleReply is the message going up the tree and holding a counter
-// to verify the number of nodes.
+// HandleReply is the message going up the tree and holding both the highest number yet
+// and the ID of the node that generated it.
 func (p *LotteryProtocol) HandleReply(reply []StructReply) error {
 	defer p.Done()
 

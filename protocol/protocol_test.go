@@ -24,8 +24,6 @@ func TestMain(m *testing.M) {
 	log.MainTest(m)
 }
 
-// Tests a 2, 5 and 13-node system. It is good practice to test different
-// sizes of trees to make sure your protocol is stable.
 func TestNode(t *testing.T) {
 	nodes := []int{1, 5, 10}
 	for _, nbrNodes := range nodes {

@@ -24,7 +24,7 @@ type StructAnnounce struct {
 	Announce
 }
 
-// Reply returns the count of all children.
+// Reply returns the the highest number and the ID of the node that generated it.
 type Reply struct {
 	HighestNumber int
 	NodeID        string
