@@ -13,6 +13,8 @@ node will only use the `Handle`-methods, and not call `Start` again.
 import (
 	"errors"
 
+	"math/rand"
+
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
@@ -24,23 +26,24 @@ func init() {
 	onet.GlobalProtocolRegister(Name, NewProtocol)
 }
 
-// TemplateProtocol holds the state of a given protocol.
+// LotteryProtocol holds the state of a given protocol.
 //
 // For this example, it defines a channel that will receive the number
 // of children. Only the root-node will write to the channel.
-type TemplateProtocol struct {
+type LotteryProtocol struct {
 	*onet.TreeNodeInstance
-	ChildCount chan int
+	LotteryResult chan int
+	NodeID        string
 }
 
 // Check that *TemplateProtocol implements onet.ProtocolInstance
-var _ onet.ProtocolInstance = (*TemplateProtocol)(nil)
+var _ onet.ProtocolInstance = (*LotteryProtocol)(nil)
 
 // NewProtocol initialises the structure for use in one round
 func NewProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
-	t := &TemplateProtocol{
+	t := &LotteryProtocol{
 		TreeNodeInstance: n,
-		ChildCount:       make(chan int),
+		LotteryResult:    make(chan int),
 	}
 	for _, handler := range []interface{}{t.HandleAnnounce, t.HandleReply} {
 		if err := t.RegisterHandler(handler); err != nil {
@@ -51,15 +54,15 @@ func NewProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
 }
 
 // Start sends the Announce-message to all children
-func (p *TemplateProtocol) Start() error {
-	log.Lvl3("Starting TemplateProtocol")
+func (p *LotteryProtocol) Start() error {
+	log.Lvl3("Starting LotteryProtocol")
 	return p.HandleAnnounce(StructAnnounce{p.TreeNode(),
-		Announce{"cothority rulez!"}})
+		Announce{"Starting Lottery"}})
 }
 
 // HandleAnnounce is the first message and is used to send an ID that
 // is stored in all nodes.
-func (p *TemplateProtocol) HandleAnnounce(msg StructAnnounce) error {
+func (p *LotteryProtocol) HandleAnnounce(msg StructAnnounce) error {
 	log.Lvl3("Parent announces:", msg.Message)
 	if !p.IsLeaf() {
 		// If we have children, send the same message to all of them
@@ -73,19 +76,26 @@ func (p *TemplateProtocol) HandleAnnounce(msg StructAnnounce) error {
 
 // HandleReply is the message going up the tree and holding a counter
 // to verify the number of nodes.
-func (p *TemplateProtocol) HandleReply(reply []StructReply) error {
+func (p *LotteryProtocol) HandleReply(reply []StructReply) error {
 	defer p.Done()
 
-	children := 1
+	highest := rand.Intn(100)
+	log.Lvl2("number of this node : ", highest)
+	id := p.TreeNodeInstance.TreeNode().String()
+	log.Lvl2("ID of this node : ", id)
 	for _, c := range reply {
-		children += c.ChildrenCount
+		if c.HighestNumber > highest {
+			highest = c.HighestNumber
+			id = c.NodeID
+		}
 	}
-	log.Lvl3(p.ServerIdentity().Address, "is done with total of", children)
+	log.Lvl3(p.ServerIdentity().Address, "'s highest is ", highest)
 	if !p.IsRoot() {
 		log.Lvl3("Sending to parent")
-		return p.SendTo(p.Parent(), &Reply{children})
+		return p.SendTo(p.Parent(), &Reply{highest, id})
 	}
-	log.Lvl3("Root-node is done - nbr of children found:", children)
-	p.ChildCount <- children
+	log.Lvl3("Root-node is done")
+	p.LotteryResult <- highest
+	p.NodeID = id
 	return nil
 }

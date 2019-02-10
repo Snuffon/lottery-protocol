@@ -26,7 +26,8 @@ type StructAnnounce struct {
 
 // Reply returns the count of all children.
 type Reply struct {
-	ChildrenCount int
+	HighestNumber int
+	NodeID        string
 }
 
 // StructReply just contains Reply and the data necessary to identify and
